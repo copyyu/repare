@@ -11,7 +11,7 @@ async function syncSheetToPostgres() {
 
   const client = await auth.getClient()
   const sheets = google.sheets({ version: 'v4', auth: client })
-
+  module.exports = syncSheetToPostgres;
   // 2. ดึงข้อมูลจาก Google Sheet
   const spreadsheetId = '1Hd2SV8sVZoPjyn3MhjoIQKSi_WIohvZkU4-nD7dpBGk'
   const range = 'Sheet1!A2:H' // ข้าม header (A2 ถึง H)
