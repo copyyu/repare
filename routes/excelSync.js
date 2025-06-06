@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const google = require('googleapis');
+const { google } = require('googleapis');
 const auth = require('../auth');
 
 // รับข้อมูลจาก Power Automate (Excel Online → PostgreSQL)

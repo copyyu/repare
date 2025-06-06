@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const pool = require('../db');
-const google = require('googleapis');
+const { google } = require('googleapis');
 const auth = require('../auth');
 
 // Middleware
