@@ -133,6 +133,7 @@ router.put('/:ticket_id', validateTicketStatus, async (req, res) => {
   const { status } = req.body;
   let client;
   let query = '';
+  console.log('[PUT] /:ticket_id', { ticket_id, status });
   try {
     client = await pool.connect();
     await client.query('BEGIN');
@@ -151,7 +152,9 @@ router.put('/:ticket_id', validateTicketStatus, async (req, res) => {
       UPDATE sheet1 SET "สถานะ" = $1 
       WHERE "Ticket ID" = $2 RETURNING ${selectCols}
     `;
+    console.log('[PUT] update query:', query, [status, ticket_id]);
     const result = await client.query(query, [status, ticket_id]);
+    console.log('[PUT] update result:', result.rows);
 
     // update Google Sheet ถ้ากำหนดไว้
     if (process.env.GOOGLE_SHEET_ID) {
@@ -177,6 +180,7 @@ router.put('/:ticket_id', validateTicketStatus, async (req, res) => {
     if ('วันที่แจ้ง' in obj) obj['วันที่แจ้ง'] = formatDate(obj['วันที่แจ้ง']);
     res.json(obj);
   } catch (err) {
+    console.error('[PUT] update error:', err);
     await client.query('ROLLBACK');
     res.status(500).json({ error: 'Failed to update ticket', details: err.message });
   } finally {
@@ -189,6 +193,7 @@ router.put('/:ticket_id/message', validateTicketMessage, async (req, res) => {
   const { message } = req.body;
   let client;
   let query = '';
+  console.log('[PUT] /:ticket_id/message', { ticket_id, message });
   try {
     client = await pool.connect();
     await client.query('BEGIN');
@@ -205,6 +210,7 @@ router.put('/:ticket_id/message', validateTicketMessage, async (req, res) => {
 
     // ตรวจสอบว่ามี TEXTBOX หรือไม่
     if (!columns.map(c => c.toUpperCase()).includes('TEXTBOX')) {
+      console.error('[PUT] TEXTBOX column missing');
       throw new Error('Column TEXTBOX does not exist in the table');
     }
 
@@ -212,7 +218,9 @@ router.put('/:ticket_id/message', validateTicketMessage, async (req, res) => {
       UPDATE sheet1 SET "TEXTBOX" = $1 
       WHERE "Ticket ID" = $2 RETURNING ${selectCols}
     `;
+    console.log('[PUT] update message query:', query, [message, ticket_id]);
     const result = await client.query(query, [message, ticket_id]);
+    console.log('[PUT] update message result:', result.rows);
 
     // update Google Sheet ถ้ากำหนดไว้
     if (process.env.GOOGLE_SHEET_ID) {
@@ -238,6 +246,7 @@ router.put('/:ticket_id/message', validateTicketMessage, async (req, res) => {
     if ('วันที่แจ้ง' in obj) obj['วันที่แจ้ง'] = formatDate(obj['วันที่แจ้ง']);
     res.json(obj);
   } catch (err) {
+    console.error('[PUT] update message error:', err);
     await client.query('ROLLBACK');
     res.status(500).json({ error: 'Failed to update message', details: err.message });
   } finally {
@@ -248,13 +257,15 @@ router.put('/:ticket_id/message', validateTicketMessage, async (req, res) => {
 router.delete('/:ticket_id', async (req, res) => {
   const { ticket_id } = req.params;
   let client;
+  console.log('[DELETE] /:ticket_id', { ticket_id });
   try {
     client = await pool.connect();
     await client.query('BEGIN');
-    await client.query(
+    const deleteResult = await client.query(
       'DELETE FROM sheet1 WHERE "Ticket ID" = $1',
       [ticket_id]
     );
+    console.log('[DELETE] delete result:', deleteResult.rowCount);
 
     // ลบใน Google Sheet ถ้ามี
     if (process.env.GOOGLE_SHEET_ID) {
@@ -287,6 +298,7 @@ router.delete('/:ticket_id', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true, message: 'Ticket deleted' });
   } catch (err) {
+    console.error('[DELETE] error:', err);
     await client.query('ROLLBACK');
     res.status(500).json({ error: 'Failed to delete ticket', details: err.message });
   } finally {

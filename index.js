@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const pool = require('./db');
+const google = require('googleapis');
+const auth = require('./auth');
 
 // Middleware
 app.use(cors());
@@ -40,7 +42,48 @@ app.post('/webhook', async (req, res) => {
 
     await pool.query(query, values);
 
-    console.log('✅ บันทึกลง PostgreSQL เรียบร้อย');
+    // อัพเดท Google Sheet
+    if (process.env.GOOGLE_SHEET_ID) {
+      const sheets = google.sheets({ version: 'v4', auth });
+      const findRowResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: 'Sheet1!A:A',
+      });
+      const rows = findRowResponse.data.values || [];
+      const rowIndex = rows.findIndex(row => row[0] === ticket_id);
+      
+      if (rowIndex === -1) {
+        // ถ้าไม่มีข้อมูลใน Sheet ให้เพิ่มแถวใหม่
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: process.env.GOOGLE_SHEET_ID,
+          range: 'Sheet1!A:L',
+          valueInputOption: 'USER_ENTERED',
+          resource: {
+            values: [[
+              ticket_id, user_id, email, name, phone,
+              department, created_at, status,
+              appointment, requeste, report, textbox
+            ]]
+          }
+        });
+      } else {
+        // ถ้ามีข้อมูลแล้ว ให้อัพเดทแถวที่มีอยู่
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: process.env.GOOGLE_SHEET_ID,
+          range: `Sheet1!A${rowIndex + 1}:L${rowIndex + 1}`,
+          valueInputOption: 'USER_ENTERED',
+          resource: {
+            values: [[
+              ticket_id, user_id, email, name, phone,
+              department, created_at, status,
+              appointment, requeste, report, textbox
+            ]]
+          }
+        });
+      }
+    }
+
+    console.log('✅ บันทึกลง PostgreSQL และ Google Sheet เรียบร้อย');
     res.status(200).send('✅ บันทึกสำเร็จ');
   } catch (err) {
     console.error('❌ บันทึกล้มเหลว:', err.message);

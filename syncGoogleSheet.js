@@ -1,49 +1,75 @@
 const pool = require('./db') // ต้องเชื่อมกับ db.js ที่คุณสร้างไว้
 const { google } = require('googleapis')
+const auth = require('./auth')
 require('dotenv').config()
 
 async function syncSheetToPostgres() {
-  // 1. Auth กับ Google Sheet
-  const auth = new google.auth.GoogleAuth({
-    keyFile: 'credentials.json', // ต้องมีไฟล์นี้จาก Google Cloud Console
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-  })
+  try {
+    const sheets = google.sheets({ version: 'v4', auth })
+    
+    // ดึงข้อมูลทั้งหมดจาก Google Sheet
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'Sheet1!A:L', // ดึงข้อมูลทั้งหมดจากคอลัมน์ A ถึง L
+    })
 
-  const client = await auth.getClient()
-  const sheets = google.sheets({ version: 'v4', auth: client })
-  module.exports = syncSheetToPostgres;
-  // 2. ดึงข้อมูลจาก Google Sheet
-  const spreadsheetId = '1Hd2SV8sVZoPjyn3MhjoIQKSi_WIohvZkU4-nD7dpBGk'
-  const range = 'Sheet1!A2:H' // ข้าม header (A2 ถึง H)
+    const rows = response.data.values || []
+    console.log(`ดึงข้อมูลจาก Google Sheet ได้ทั้งหมด ${rows.length} แถว`)
 
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  })
+    if (rows.length) {
+      // เริ่ม transaction
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
 
-  const rows = response.data.values
-  console.log(`ดึงข้อมูลจาก Google Sheet ได้ทั้งหมด ${rows.length} แถว`)
+        // อัพเดทข้อมูลใน PostgreSQL
+        for (let i = 1; i < rows.length; i++) { // ข้าม header (i = 0)
+          const row = rows[i]
+          const [
+            ticket_id, user_id, email, name, phone,
+            department, created_at, status,
+            appointment, requeste, report, textbox
+          ] = row
 
-  if (rows.length) {
-    for (let row of rows) {
-      const ticket_id = row[0] || ''
-      const user_id = row[1] || ''
-      const email = row[2] || ''
-      const name = row[3] || ''
-      const phone = row[4] || ''
-      const department = row[5] || ''
-      const created_at = row[6] || ''
-      const status = row[7] || ''
+          await client.query(
+            `INSERT INTO sheet1 (
+              "Ticket ID", "User ID", "อีเมล", "ชื่อ", "เบอร์ติดต่อ",
+              "แผนก", "วันที่แจ้ง", "สถานะ",
+              "Appointment", "Requeste", "Report", "TEXTBOX"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ON CONFLICT ("Ticket ID") DO UPDATE SET
+              "User ID" = EXCLUDED."User ID",
+              "อีเมล" = EXCLUDED."อีเมล",
+              "ชื่อ" = EXCLUDED."ชื่อ",
+              "เบอร์ติดต่อ" = EXCLUDED."เบอร์ติดต่อ",
+              "แผนก" = EXCLUDED."แผนก",
+              "วันที่แจ้ง" = EXCLUDED."วันที่แจ้ง",
+              "สถานะ" = EXCLUDED."สถานะ",
+              "Appointment" = EXCLUDED."Appointment",
+              "Requeste" = EXCLUDED."Requeste",
+              "Report" = EXCLUDED."Report",
+              "TEXTBOX" = EXCLUDED."TEXTBOX"`,
+            [
+              ticket_id, user_id, email, name, phone,
+              department, created_at, status,
+              appointment, requeste, report, textbox
+            ]
+          )
+        }
 
-      await pool.query(
-        `INSERT INTO "sheet1" (
-          "Ticket ID", "User ID", "อีเมล", "ชื่อ", "เบอร์ติดต่อ", "แผนก", "วันที่แจ้ง", "สถานะ"
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        ON CONFLICT ("Ticket ID") DO NOTHING`,
-        [ticket_id, user_id, email, name, phone, department, created_at, status]
-      )
+        await client.query('COMMIT')
+        console.log('✅ ซิงค์ข้อมูลจาก Google Sheet ไปยัง PostgreSQL เรียบร้อย')
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
     }
+  } catch (err) {
+    console.error('❌ เกิดข้อผิดพลาดในการซิงค์ข้อมูล:', err)
+    throw err
   }
 }
 
-syncSheetToPostgres().catch(console.error)
+module.exports = syncSheetToPostgres
