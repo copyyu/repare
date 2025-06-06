@@ -22,7 +22,7 @@ app.post('/webhook', async (req, res) => {
   const {
     ticket_id, user_id, email, name, phone,
     department, created_at, status,
-    appointment, requeste, report, textbox
+    appointment, requeste, report, type, textbox
   } = req.body;
 
   try {
@@ -30,14 +30,14 @@ app.post('/webhook', async (req, res) => {
       INSERT INTO sheet1(
         "Ticket ID", "User ID", "อีเมล", "ชื่อ", "เบอร์ติดต่อ", 
         "แผนก", "วันที่แจ้ง", "สถานะ", 
-        "Appointment", "Requeste", "Report", "TEXTBOX"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        "Appointment", "Requeste", "Report", "Type", "TEXTBOX"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `;
 
     const values = [
       ticket_id, user_id, email, name, phone,
       department, created_at, status,
-      appointment, requeste, report, textbox
+      appointment, requeste, report, type, textbox
     ];
 
     await pool.query(query, values);
@@ -47,7 +47,7 @@ app.post('/webhook', async (req, res) => {
       const sheets = google.sheets({ version: 'v4', auth });
       const findRowResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: 'Sheet1!A:A',
+        range: 'sheet1!A:A',
       });
       const rows = findRowResponse.data.values || [];
       const rowIndex = rows.findIndex(row => row[0] === ticket_id);
@@ -56,13 +56,13 @@ app.post('/webhook', async (req, res) => {
         // ถ้าไม่มีข้อมูลใน Sheet ให้เพิ่มแถวใหม่
         await sheets.spreadsheets.values.append({
           spreadsheetId: process.env.GOOGLE_SHEET_ID,
-          range: 'Sheet1!A:L',
+          range: 'sheet1!A:L',
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: [[
               ticket_id, user_id, email, name, phone,
               department, created_at, status,
-              appointment, requeste, report, textbox
+              appointment, requeste, report, type, textbox
             ]]
           }
         });
@@ -70,13 +70,13 @@ app.post('/webhook', async (req, res) => {
         // ถ้ามีข้อมูลแล้ว ให้อัพเดทแถวที่มีอยู่
         await sheets.spreadsheets.values.update({
           spreadsheetId: process.env.GOOGLE_SHEET_ID,
-          range: `Sheet1!A${rowIndex + 1}:L${rowIndex + 1}`,
+          range: `sheet1!A${rowIndex + 1}:L${rowIndex + 1}`,
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: [[
               ticket_id, user_id, email, name, phone,
               department, created_at, status,
-              appointment, requeste, report, textbox
+              appointment, requeste, report, type, textbox
             ]]
           }
         });
