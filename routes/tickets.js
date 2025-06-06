@@ -1,20 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const pool = require('./db');
+const pool = require('../db');
 const google = require('googleapis');
-const auth = require('./auth');
+const auth = require('../auth');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Import routers
-const ticketsRouter = require('./routes/tickets');
-const excelSyncRouter = require('./routes/excelSync');
+const excelSyncRouter = require('./excelSync');
 
 // ใช้ router
-app.use('/api/tickets', ticketsRouter);      // สำหรับ tickets CRUD
 app.use('/api', excelSyncRouter);            // สำหรับ /api/excel-sync
 
 // Webhook สำหรับรับข้อมูล Ticket ใหม่
@@ -101,3 +99,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 เซิร์ฟเวอร์ทำงานที่ http://localhost:${PORT}`);
 });
+
+module.exports = app; // หรือ module.exports = router; ถ้าใช้ express.Router()
