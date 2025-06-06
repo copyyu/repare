@@ -4,7 +4,7 @@ const syncSheetToPostgres = require('./syncGoogleSheet');
 // รันการซิงค์ข้อมูลทุก 5 นาที
 cron.schedule('*/1 * * * *', async () => {
   console.log('🔄 เริ่มการซิงค์ข้อมูลจาก Google Sheet...');
-  try {
+  try {ด
     await syncSheetToPostgres();
   } catch (err) {
     console.error('❌ การซิงค์ข้อมูลล้มเหลว:', err);
