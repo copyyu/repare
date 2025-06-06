@@ -47,7 +47,11 @@ app.post('/webhook', async (req, res) => {
       const sheets = google.sheets({ version: 'v4', auth });
       const findRowResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
+<<<<<<< HEAD
+        range: 'sheet1!A:L',
+=======
         range: 'sheet1!A:A',
+>>>>>>> cd92c261aeff0209daeced5b42a035f167bd602d
       });
       const rows = findRowResponse.data.values || [];
       const rowIndex = rows.findIndex(row => row[0] === ticket_id);
@@ -56,7 +60,11 @@ app.post('/webhook', async (req, res) => {
         // ถ้าไม่มีข้อมูลใน Sheet ให้เพิ่มแถวใหม่
         await sheets.spreadsheets.values.append({
           spreadsheetId: process.env.GOOGLE_SHEET_ID,
+<<<<<<< HEAD
+          range: 'sheet1!A:M',
+=======
           range: 'sheet1!A:L',
+>>>>>>> cd92c261aeff0209daeced5b42a035f167bd602d
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: [[
@@ -70,7 +78,11 @@ app.post('/webhook', async (req, res) => {
         // ถ้ามีข้อมูลแล้ว ให้อัพเดทแถวที่มีอยู่
         await sheets.spreadsheets.values.update({
           spreadsheetId: process.env.GOOGLE_SHEET_ID,
+<<<<<<< HEAD
+          range: `sheet1!A${rowIndex + 1}:M${rowIndex + 1}`,
+=======
           range: `sheet1!A${rowIndex + 1}:L${rowIndex + 1}`,
+>>>>>>> cd92c261aeff0209daeced5b42a035f167bd602d
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: [[
