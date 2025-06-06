@@ -10,7 +10,7 @@ async function syncSheetToPostgres() {
     // ดึงข้อมูลทั้งหมดจาก Google Sheet
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:L', // ดึงข้อมูลทั้งหมดจากคอลัมน์ A ถึง L
+      range: 'sheet1!A:M', // ดึงข้อมูลทั้งหมดจากคอลัมน์ A ถึง L
     })
 
     const rows = response.data.values || []
@@ -28,15 +28,15 @@ async function syncSheetToPostgres() {
           const [
             ticket_id, user_id, email, name, phone,
             department, created_at, status,
-            appointment, requeste, report, textbox
+            appointment, requeste, report, type, textbox
           ] = row
 
           await client.query(
             `INSERT INTO sheet1 (
               "Ticket ID", "User ID", "อีเมล", "ชื่อ", "เบอร์ติดต่อ",
               "แผนก", "วันที่แจ้ง", "สถานะ",
-              "Appointment", "Requeste", "Report", "TEXTBOX"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              "Appointment", "Requeste", "Report", "Type", "TEXTBOX"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT ("Ticket ID") DO UPDATE SET
               "User ID" = EXCLUDED."User ID",
               "อีเมล" = EXCLUDED."อีเมล",
@@ -48,11 +48,12 @@ async function syncSheetToPostgres() {
               "Appointment" = EXCLUDED."Appointment",
               "Requeste" = EXCLUDED."Requeste",
               "Report" = EXCLUDED."Report",
+              "Type" = EXCLUDED."Type",
               "TEXTBOX" = EXCLUDED."TEXTBOX"`,
             [
               ticket_id, user_id, email, name, phone,
               department, created_at, status,
-              appointment, requeste, report, textbox
+              appointment, requeste, report, type, textbox
             ]
           )
         }
